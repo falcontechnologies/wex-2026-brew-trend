@@ -1,0 +1,95 @@
+Hi Claude! I'm new here. Could you vibe code with me? If you need more information from me, ask me 1-2 key questions right away. If you think I should give you more context or upload anything to help you do a better job, let me know.
+
+If it makes sense, create something we can look at together—like a visual, a checklist, or something interactive. Thanks for your help!
+
+Mar 19
+Hey, welcome! Happy to vibe code with you 😄
+
+What are we building? A couple quick questions to get us started:
+
+What are we working with? 🚀
+
+Q: What kind of thing do you want to build?
+A: [No preference]
+
+Q: Do you have a specific idea, or want me to suggest something cool?
+A: I have an idea
+
+Mar 19
+Love it! What's the idea? Tell me as much or as little as you've got — even a rough concept works. 🎨
+
+I would like to build a tool to gather the data from this url https://formulae.brew.sh/api/analytics/install/30d.json and send it to a sqlite database. I am familiar with the python programming language.
+
+Mar 19
+Great idea! A few quick questions to nail the design:
+
+Q: How do you want to run this tool?
+A: CLI with options
+
+Q: Should re-runs append new data or replace existing data?
+A: Append (keep history)
+
+Mar 19
+Let me peek at the API data structure first, then I'll build this out.
+
+
+Fetched: https://formulae.brew.sh/api/analytics/install/30d.json
+Fetched: https://formulae.brew.sh/api/analytics/install/30d.json
+Got everything I need. The JSON has metadata fields (category, start_date, end_date, total_count) plus an items array with rank, formula name, count, and percent. I'll build a clean CLI tool now.
+
+
+Brew analytics CLI tool
+Brew analytics CLI tool
+Now let's make a visual reference card for how to use it:
+
+
+Presented file
+Presented file
+
+
+Here's what you've got — zero dependencies, pure stdlib. Quick start:
+
+bash
+python brew_analytics.py fetch          # grabs 30d data
+python brew_analytics.py query          # shows top 10
+python brew_analytics.py query --list   # shows all snapshots you've collected
+Each time you run fetch, a new snapshot is appended with a UTC timestamp, so you can track trends over time. Want me to add anything — like a --since filter, CSV export, or a trending/diff view between two snapshots?
+
+Brew analytics
+PY
+I would like to extend this to have error handling to ensure that there is only one snapshots row per day. If an existing snapshots entry exists, it should not add another set of installs.
+
+1:10 PM
+
+Read current script
+Read current script
+Clean — two targeted changes needed: add a unique constraint on (fetch_date, period_days) in the schema, and add a duplicate-check in cmd_fetch before inserting. I'll also add a --force flag to override the guard when needed.
+
+
+Edited 6 files, ran 5 commands
+Edited 6 files, ran 5 commands
+Network is disabled in the sandbox, but the script logic is sound. Let me do a dry-run test with a mock to verify the duplicate guard works:
+
+
+Test duplicate guard logic with in-memory DB
+Test duplicate guard logic with in-memory DB
+Both layers work perfectly. Let me present the updated file:
+
+
+Presented file
+Presented file
+Two layers of protection were added:
+
+Application-level guard — before any insert, cmd_fetch queries for an existing snapshot matching today's UTC date and period_days. If one is found it exits cleanly with a descriptive message telling you exactly which snapshot already covers today.
+
+Database-level constraint — a UNIQUE (fetch_date, period_days) constraint on the snapshots table acts as a hard backstop. Even if somehow the app-level check were bypassed, the DB will reject the duplicate insert.
+
+A new fetch_date column (YYYY-MM-DD) was added to make the uniqueness check efficient and unambiguous — it's derived from fetched_at and backfilled for any existing rows on first run.
+
+The new --force flag lets you deliberately replace today's snapshot when you need it:
+
+bash
+python brew_analytics.py fetch           # blocked if today already has a snapshot
+python brew_analytics.py fetch --force   # replaces today's snapshot cleanly
+Brew analytics
+PY
