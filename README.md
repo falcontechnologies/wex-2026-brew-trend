@@ -1,56 +1,273 @@
-# wex 2026 homebrew trending
+# Wex 2026 — Homebrew Analytics
 
-## Quick Summary
-This repository is a tool to gather and report on trending homebrew from the api
+Automated pipeline that collects daily Homebrew install-count snapshots from the [Homebrew Analytics API](https://formulae.brew.sh/api/), stores them in a local SQLite database, and renders a two-panel dashboard chart.
 
-[Homebrew Formulae Install Events 30 days)[https://formulae.brew.sh/analytics/install/30d/]
+---
 
-and storing the results to a local SQLite database.
+## Project Structure
 
-## Environment Setup
+```
+Homebrew_API/
+├── homebrew_tracker_sqlite.py      # Core tracker — fetch, validate, persist
+├── homebrew_tracker_sqlite_demo.py # Offline demo (uses sample data)
+├── run_collection.py               # Scheduler entry point (also works manually)
+├── plot_analytics.py               # Chart generator (line + bar)
+├── setup_scheduler.py              # One-command scheduler registration
+├── health_check.py                 # Pipeline health dashboard
+├── logger.py                       # Shared logging module
+├── homebrew_analytics.db           # SQLite database (auto-created)
+├── homebrew_analytics.png          # Latest chart (auto-generated)
+└── logs/
+    ├── collection.log              # Persistent log across all runs
+    └── run_YYYY-MM-DD_HH-MM-SS.log # Per-run detail log
+```
 
-This uses Python, Flask and SQLite with an ML coding tool to perform data capture and storage and a web application to display the trend graph
+---
 
-TBD: Determine more requirements for the web application
+## Quick Start
 
-Python should be 3.11 or greater.
+### 1 — Install dependencies
+```bash
+pip install requests matplotlib
+```
 
-No virtual environment is enforced in this project. Research, make a working instruction and use an appropriate virtual environment. In the instruction, include why you chose the virtual enviornment tool and a link to the installation page and documentation page. You can check in the working instructions to your branch of this project.
+### 2 — Run once manually
+```bash
+python run_collection.py
+```
 
-No restriction is placed on using a coding ML assistant. Claude Sonnet 4.6 and Claude Code have both been tried. Other ML code assistants can be used.
+### 3 — Generate chart
+```bash
+python plot_analytics.py
+```
 
-## Application Information
+### 4 — Set up daily automation
+```bash
+python setup_scheduler.py           # registers daily 08:00 run
+python setup_scheduler.py --time 09:00   # custom time
+```
 
-The project expects to take a snapshot of the data at the above endpoint on a scheduled basis and store it to a local SQLite database. The project may, but does not require a scheduler, only that the use of it should be documented. Scheduling may use cron, systemd or other techniques to provide the scheduling.
+### 5 — Verify everything is working
+```bash
+python health_check.py
+```
 
-The data should be written to a table in the database and the event when it was run should be stored somewhere in the database.
+---
 
-Once some data has been collected over a period of time, a separate web application is required to allow a user to interogate the data to provide a daily installation snapshot of which packages are in high use. The application is missing requirements, so some experimentation is expected to clarify the requirements.
+## Scheduler
 
-The questions to be answered are
-* What are the 10 most popular packages over a period of time?
-* Which packages are trending up? Criteria is needed to separate daily differences from noise.
-* Which packages are trending down?
-* For any individual package, where does it rank against all other packages and what total daily download for the last day? Do we need to provide an average value over the next time period as well?
+### Windows (Task Scheduler) — Recommended on this machine
 
-## Known Unknowns
+`setup_scheduler.py` registers a **Windows Task Scheduler** job that runs `run_collection.py` daily at 08:00 using your current Python executable.
 
-The data from the api listed above needs to be analyzed to determine the best way to create the daily information. The initial analysis suggests that creating a difference table between two record rows of the same formula name by date should provide synthetic data that is good enough to provide the trend line for packages.
+```
+python setup_scheduler.py               # install at 08:00
+python setup_scheduler.py --time 09:30  # install at 09:30
+python setup_scheduler.py --status      # show task details
+python setup_scheduler.py --remove      # unregister task
+```
 
-Required packages (Python) have not been set. These packages must be included in the requirements.txt file and bound to a major version.
+**Why Task Scheduler?**
+- Built into every version of Windows — no extra software needed
+- Runs even if you are not logged in (with correct user settings)
+- Survives reboots automatically
+- Easy to inspect via the Task Scheduler GUI (`taskschd.msc`)
 
-## git Workflow
+---
 
-A branch per developer will be used off of the main branch.
+### macOS (launchd)
 
-## ML Coding Assistant
+Create `~/Library/LaunchAgents/com.homebrew.analytics.plist`:
 
-Current practise has a Markdown file to provide context for the tool to focus the work.
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>          <string>com.homebrew.analytics</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/python3</string>
+    <string>/full/path/to/run_collection.py</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict><key>Hour</key><integer>8</integer><key>Minute</key><integer>0</integer></dict>
+  <key>StandardOutPath</key> <string>/tmp/homebrew_analytics.log</string>
+  <key>StandardErrorPath</key><string>/tmp/homebrew_analytics_err.log</string>
+</dict>
+</plist>
+```
 
-Some preliminary standards are, for Claude, to have both an AGENTS.md and a CLAUDE.md file. The AGENTS.md file has general context information while CLAUDE.md has Claude specific context. Other ML coding tools may have different requirements. Refer to the tool documentation to create the correct file and include the file in your repository assets.
+Then load it:
+```bash
+launchctl load ~/Library/LaunchAgents/com.homebrew.analytics.plist
+```
 
-To address the limitations of context windows, when necessary add a MEMORY.md file that will contain a tool summarized prompt collection that can be used to bring the ML conding tool to a project-aware state with room to add additional prompts. If you use this, remember to check in the file to git.
+---
 
-To provide trace-ability, please create a prompt session file or directory and check it in to git.
- 
-----
+### Linux (cron)
+
+```bash
+crontab -e
+# Add this line (runs at 08:00 daily):
+0 8 * * * /usr/bin/python3 /full/path/to/run_collection.py >> /full/path/to/logs/cron.log 2>&1
+```
+
+---
+
+## Data Validation
+
+Each run validates the API payload before writing anything to the database:
+
+| Check | What it catches |
+|---|---|
+| Required keys present | Broken API schema |
+| `end_date >= start_date` | Date field inversion |
+| Window ≈ 30 days (±3) | API window change |
+| `install_count > 0` | Zero/negative counts |
+| All item fields present | Incomplete records |
+
+Warnings are logged but do not abort the run; errors abort before any DB writes.
+
+---
+
+## Logging
+
+Every run writes to two places:
+
+| File | Purpose |
+|---|---|
+| `logs/collection.log` | Persistent history — one file, all runs appended |
+| `logs/run_YYYY-MM-DD_HH-MM-SS.log` | Full debug log for a single run |
+
+Log format:
+```
+2026-03-25 08:00:01 | INFO     | Homebrew Analytics Tracker — starting
+2026-03-25 08:00:01 | INFO     | Setting up database: ...
+2026-03-25 08:00:02 | INFO     | Snapshot #12 created.
+```
+
+---
+
+## Health Check
+
+Run before a demo or whenever something seems off:
+
+```bash
+python health_check.py
+```
+
+Output:
+```
+============================================================
+  Homebrew Analytics — Health Check
+  2026-03-25 09:00:00
+============================================================
+
+[1] Windows Task Scheduler
+✔  Task 'HomebrewAnalyticsDailyRun' is registered
+    Status    : Ready
+    Last run  : 2026-03-25 08:00:00
+    Next run  : 2026-03-26 08:00:00
+
+[2] Database
+✔  Database found
+✔  Snapshots: 5 (2026-03-20 → 2026-03-25)
+    Latest top packages:
+      #1  openssl@3              488,020
+      ...
+
+[3] Logs
+✔  Log directory: logs/
+✔  Run log files: 5
+✔  No errors in recent log entries
+
+============================================================
+  ALL CHECKS PASSED — pipeline is healthy
+============================================================
+```
+
+For machine-readable output (CI / scripts):
+```bash
+python health_check.py --json
+```
+
+---
+
+## Chart
+
+```bash
+python plot_analytics.py
+```
+
+Produces `homebrew_analytics.png`:
+- **Left** — line chart: install count trend per package across all collected dates
+- **Right** — horizontal bar chart: latest snapshot rankings with exact counts
+
+Requires at least 1 snapshot for the bar chart; 2+ snapshots for meaningful trend lines.
+
+---
+
+## Troubleshooting
+
+**`setup_scheduler.py` says "Access denied"**
+Run the terminal as Administrator (right-click → "Run as administrator").
+
+**Scheduler task exists but never ran**
+Open Task Scheduler GUI (`taskschd.msc`), find `HomebrewAnalyticsDailyRun`, right-click → Run to test it manually. Check "Last Run Result" — code `0` = success.
+
+**`homebrew_analytics.db` missing after scheduler run**
+The task may be running from the wrong working directory. Re-register with the full path:
+```bash
+python setup_scheduler.py --remove
+python setup_scheduler.py
+```
+
+**Chart shows no trend line (flat)**
+You need snapshots from at least 2 different days. The line chart plots one point per day — intra-day duplicates are deduplicated automatically.
+
+**`requests` or `matplotlib` not found**
+```bash
+pip install requests matplotlib
+```
+
+If the scheduler runs a different Python than your shell:
+```bash
+python setup_scheduler.py --remove
+# Then re-register — setup_scheduler.py always uses the Python it was launched with
+python setup_scheduler.py
+```
+
+---
+
+## Database Schema
+
+```sql
+snapshots (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp       TEXT,       -- ISO-8601 datetime of collection
+    date            TEXT,       -- YYYY-MM-DD
+    total_packages  INTEGER,    -- total items reported by API
+    api_start_date  TEXT,       -- rolling window start
+    api_end_date    TEXT        -- rolling window end
+)
+
+packages (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    snapshot_id   INTEGER,      -- FK → snapshots.id
+    package_name  TEXT,
+    install_count INTEGER,
+    percentage    TEXT,
+    rank          INTEGER
+)
+```
+
+Query example — trend for a specific package:
+```sql
+SELECT s.date, p.install_count
+FROM   packages p
+JOIN   snapshots s ON p.snapshot_id = s.id
+WHERE  p.package_name = 'openssl@3'
+ORDER  BY s.date;
+```
