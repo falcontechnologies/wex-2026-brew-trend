@@ -62,8 +62,18 @@ def install(run_time: str = "08:00"):
     code, out, err = run(cmd)
 
     if code == 0:
+        # Allow the task to run on battery (off by default in schtasks)
+        ps = "\n".join([
+            f"$t = Get-ScheduledTask -TaskName '{TASK_NAME}'",
+            "$t.Settings.DisallowStartIfOnBatteries = $false",
+            "$t.Settings.StopIfGoingOnBatteries = $false",
+            f"Set-ScheduledTask -TaskName '{TASK_NAME}' -Settings $t.Settings",
+        ])
+        run(["powershell", "-Command", ps])
+
         print(f"Task '{TASK_NAME}' created successfully.")
         print(f"  Schedule : daily at {run_time}")
+        print(f"  Battery  : runs on battery AND AC power")
         print(f"  Python   : {PYTHON_EXE}")
         print(f"  Script   : {SCRIPT}")
         print()

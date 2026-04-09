@@ -43,8 +43,14 @@ def get_logger(name: str = "homebrew") -> logging.Logger:
     fh_main.setFormatter(fmt)
 
     # ── Per-run log ───────────────────────────────────────────────────────────
-    run_ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    run_log = os.path.join(LOGS_DIR, f"run_{run_ts}.log")
+    # If a parent process already opened a log file, reuse it (no duplicate).
+    run_log = os.environ.get("HOMEBREW_RUN_LOG")
+    is_child = run_log is not None
+    if not run_log:
+        run_ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        run_log = os.path.join(LOGS_DIR, f"run_{run_ts}.log")
+        os.environ["HOMEBREW_RUN_LOG"] = run_log   # inherited by subprocesses
+
     fh_run = logging.FileHandler(run_log, encoding="utf-8")
     fh_run.setLevel(logging.DEBUG)
     fh_run.setFormatter(fmt)
@@ -53,8 +59,9 @@ def get_logger(name: str = "homebrew") -> logging.Logger:
     logger.addHandler(fh_main)
     logger.addHandler(fh_run)
 
-    logger.info("=" * 60)
-    logger.info("RUN STARTED - log file: %s", run_log)
-    logger.info("=" * 60)
+    if not is_child:
+        logger.info("=" * 60)
+        logger.info("RUN STARTED - log file: %s", run_log)
+        logger.info("=" * 60)
 
     return logger
