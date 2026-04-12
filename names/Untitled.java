@@ -390,27 +390,8 @@ def index():
             {% endfor %}
             </ul>
         </div>
-        <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            padding: 20px;
-            /* Use the local path relative to the app root */
-            background-image: url('/static/background.jpg');
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-            color: #333;
-        }
-        </style>
 
     </body>
-        h1, h2, .snapshot-list {
-        background: rgba(255, 255, 255, 0.8); /* White with 80% opacity */
-        padding: 15px;
-        border-radius: 8px;
-        display: inline-block; /* Keeps the background wrapped tight to the text */
-        }
     </html>
     """
 

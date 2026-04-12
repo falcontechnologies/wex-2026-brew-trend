@@ -1,0 +1,118 @@
+
+    <html>
+    <head>
+        <title>Homebrew Analytics Dashboard</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                text-align: center;
+                padding: 20px;
+                background: #f5f5f5;
+                color: #333;
+            }
+            h1 { color: #222; }
+            h2 { color: #555; margin-top: 50px; border-top: 1px solid #ddd; padding-top: 20px; }
+            p  { color: #666; }
+            img {
+                max-width: 90%;
+                border: 1px solid #ddd;
+                background: white;
+                padding: 10px;
+                margin-bottom: 10px;
+                border-radius: 4px;
+            }
+            .error { color: red; font-weight: bold; }
+            .info  { color: #888; font-style: italic; }
+            .label {
+                display: inline-block;
+                background: #e8f4f8;
+                border-radius: 4px;
+                padding: 4px 10px;
+                font-size: 13px;
+                color: #555;
+                margin-bottom: 8px;
+            }
+            .snapshot-list {
+                display: inline-block;
+                text-align: left;
+                margin-top: 30px;
+            }
+            .snapshot-list ul { list-style: none; padding: 0; }
+            .snapshot-list li {
+                padding: 4px 10px;
+                background: white;
+                margin: 4px 0;
+                border-radius: 4px;
+                font-size: 14px;
+                color: #444;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>🍺 Homebrew Analytics Dashboard</h1>
+
+        <!-- CHART 1: Latest snapshot top 10 by popularity -->
+        <h2>Latest Snapshot — Top 10 by Popularity</h2>
+        {% if bar_error %}
+            <p class="error">{{ bar_error }}</p>
+        {% else %}
+            <p>Most recent snapshot: <strong>{{ latest_date }}</strong></p>
+            <img src="data:image/png;base64,{{ bar_base64 }}">
+        {% endif %}
+
+        <!-- CHART 2: Daily change — most dynamic packages -->
+        <h2>Daily Movement — Top 10 Most Dynamic Packages</h2>
+        {% if change_error %}
+            <p class="info">{{ change_error }}</p>
+        {% else %}
+            <p>
+                Comparing <strong>{{ yesterday_date }}</strong>
+                → <strong>{{ today_date }}</strong>.
+                Green = growing, Red = shrinking.
+            </p>
+            <img src="data:image/png;base64,{{ change_base64 }}">
+            <br>
+            <span class="label">📁 Chart also saved to daily_trends/trend_{{ today_date }}.png</span>
+        {% endif %}
+
+        <!-- CHART 3: Cumulative trend over all snapshots -->
+        <h2>Cumulative Trend — Top 10 Over All Snapshots</h2>
+        {% if trend_error %}
+            <p class="info">{{ trend_error }}</p>
+        {% else %}
+            <p>Tracking how install counts have shifted across every snapshot collected.</p>
+            <img src="data:image/png;base64,{{ trend_base64 }}">
+        {% endif %}
+
+        <!-- SNAPSHOT HISTORY -->
+        <div class="snapshot-list">
+            <h2>Snapshots Collected ({{ all_snapshots|length }} total)</h2>
+            <ul>
+            {% for snap in all_snapshots %}
+                <li>Snapshot #{{ snap[0] }} — {{ snap[1] }} at {{ snap[2] }}</li>
+            {% endfor %}
+            </ul>
+        </div>
+        <style>
+            body {
+            /* Link to your image (relative path or full URL) */
+            background-image: url("C:\Users\bc-tech\Documents\GitHub\wex-2026-brew-trend\Benimaru logo .jpg");
+
+            /* Prevents the image from tiling */
+            background-repeat: no-repeat;
+
+            /* Scales image to fill the screen without distortion */
+            background-size: cover;
+
+            /* Centers the image */
+            background-position: center;
+
+            /* Keeps the background fixed while scrolling */
+            background-attachment: fixed;
+            }
+        </style>
+
+    </body>
+    </html>
+
+
