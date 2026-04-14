@@ -93,3 +93,13 @@
 2026-04-12 12:17:09,252 — Already ran today (2026-04-12). Skipping.
 2026-04-12 12:17:24,582 — Script started
 2026-04-12 12:17:24,583 — Already ran today (2026-04-12). Skipping.
+2026-04-13 10:10:10,259 — Script started
+2026-04-13 10:10:10,308 — Fetching data from Homebrew API...
+2026-04-13 10:10:10,758 — Snapshot created with id=12 for 2026-04-13
+2026-04-13 10:10:10,848 — Done. 17470 installation rows saved for snapshot 12.
+2026-04-14 09:34:00,228 — Script started
+2026-04-14 09:34:00,279 — Fetching data from Homebrew API...
+2026-04-14 09:34:01,996 — Snapshot created with id=13 for 2026-04-14
+2026-04-14 09:34:02,601 — Done. 17480 installation rows saved for snapshot 13.
+2026-04-14 09:46:08,703 — Script started
+2026-04-14 09:46:08,759 — Already ran today (2026-04-14). Skipping.
