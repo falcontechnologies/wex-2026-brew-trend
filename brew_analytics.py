@@ -45,13 +45,23 @@ def init_db(conn: sqlite3.Connection) -> None:
         CREATE TABLE IF NOT EXISTS snapshots (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
             fetched_at  TEXT    NOT NULL,   -- UTC ISO-8601 timestamp of this fetch
+            fetch_date  TEXT    NOT NULL DEFAULT '',  -- UTC date only (YYYY-MM-DD), used for dedup
             category    TEXT,
             period_days INTEGER,
             start_date  TEXT,
             end_date    TEXT,
             total_items INTEGER,
-            total_count INTEGER
+            total_count INTEGER,
+            UNIQUE (fetch_date, period_days)
         );
+
+        -- backfill fetch_date for rows created before this column was added.
+        -- NOTE: I consider this a bug in the vibecoding - it adds a junk column
+        -- to the database that could be derived from the fetched_at column.
+
+        -- Backfill fetch_date for any rows created before this column existed
+        UPDATE snapshots SET fetch_date = substr(fetched_at, 1, 10)
+        WHERE fetch_date = '' OR fetch_date IS NULL;
 
         CREATE TABLE IF NOT EXISTS installs (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -74,9 +84,11 @@ def init_db(conn: sqlite3.Connection) -> None:
 def cmd_fetch(args: argparse.Namespace) -> None:
     days = args.days
     db_path = args.db
-    
+    force = args.force
+
     url = BASE_URL.format(days=days)
     print(f"→ Fetching {url} …")
+    print(f"-> Using database: {db_path}")
 
     try:
         with urllib.request.urlopen(url, timeout=15) as resp:
@@ -97,23 +109,31 @@ def cmd_fetch(args: argparse.Namespace) -> None:
         "SELECT id, fetched_at FROM snapshots WHERE end_date = ? AND period_days = ?",
         (fetch_date, days),
       ).fetchone()
-    
+
     if existing:
-        print(f"A snapshot for {fetch_date} ({days}d) already exists "
+        print(f"-> existing record for {fetch_date}")
+        if args.force:
+            print(f"  --force supplied, replacing existing record for {fetch_date} ({days}d)")
+            conn.execute("DELETE FROM installs WHERE snapshot_id = ?", (existing["id"],))
+            conn.execute("DELETE FROM snapshots WHERE id = ?", (existing["id"],))
+            conn.commit()
+        else:
+           print(f"A snapshot for {fetch_date} ({days}d) already exists "
              f"(snapshot #{existing['id']}, fetched {existing['fetched_at']}).\n"
              f" Skipping to avoid duplicate data.\n"
             )
         conn.close()
         sys.exit(0)
-    
+
     cur = conn.execute(
         """
         INSERT INTO snapshots
-            (fetched_at, category, period_days, start_date, end_date, total_items, total_count)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+            (fetched_at, fetch_date, category, period_days, start_date, end_date, total_items, total_count)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             fetched_at,
+            fetch_date,
             payload.get("category"),
             days,
             payload.get("start_date"),
@@ -162,6 +182,7 @@ def cmd_query(args: argparse.Namespace) -> None:
         print(f"✗ Database not found: {db_path}\n  Run 'fetch' first.", file=sys.stderr)
         sys.exit(1)
 
+    print(f"-> Using database: {db_path}")
     conn = get_connection(db_path)
     init_db(conn)
 
@@ -236,6 +257,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_fetch = sub.add_parser("fetch", help="Download analytics and store a new snapshot")
     p_fetch.add_argument("--days", type=int, default=30, choices=VALID_DAYS,
                          help="Analytics window in days (default: 30)")
+    p_fetch.add_argument("--force", action="store_true",
+                         help="Replace existing snapshot if it exists")
+
     p_fetch.set_defaults(func=cmd_fetch)
 
     # query
