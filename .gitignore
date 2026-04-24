@@ -174,4 +174,5 @@ dmypy.json
 
 #   ignore local database files - you can override this if necessary
 *.db
-
+# the line above ensures that the local database isn't uploaded to github
+brew_data.db

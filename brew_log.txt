@@ -103,3 +103,37 @@
 2026-04-14 09:34:02,601 — Done. 17480 installation rows saved for snapshot 13.
 2026-04-14 09:46:08,703 — Script started
 2026-04-14 09:46:08,759 — Already ran today (2026-04-14). Skipping.
+2026-04-15 13:09:20,713 — Script started
+2026-04-15 13:09:20,768 — Fetching data from Homebrew API...
+2026-04-15 13:09:21,825 — Snapshot created with id=14 for 2026-04-15
+2026-04-15 13:09:23,065 — Done. 17521 installation rows saved for snapshot 14.
+2026-04-16 11:35:30,762 — Script started
+2026-04-16 11:35:30,894 — Fetching data from Homebrew API...
+2026-04-16 11:35:32,926 — Snapshot created with id=15 for 2026-04-16
+2026-04-16 11:35:33,151 — Done. 17547 installation rows saved for snapshot 15.
+2026-04-17 09:32:24,595 — Script started
+2026-04-17 09:32:24,696 — Fetching data from Homebrew API...
+2026-04-17 09:32:25,393 — Snapshot created with id=16 for 2026-04-17
+2026-04-17 09:32:25,589 — Done. 17578 installation rows saved for snapshot 16.
+2026-04-18 09:00:36,264 — Script started
+2026-04-18 09:00:36,353 — Fetching data from Homebrew API...
+2026-04-18 09:00:36,762 — Snapshot created with id=17 for 2026-04-18
+2026-04-18 09:00:36,912 — Done. 17542 installation rows saved for snapshot 17.
+2026-04-19 09:00:35,159 — Script started
+2026-04-19 09:00:35,510 — Fetching data from Homebrew API...
+2026-04-19 09:00:35,982 — Snapshot created with id=18 for 2026-04-19
+2026-04-19 09:00:36,078 — Done. 17529 installation rows saved for snapshot 18.
+2026-04-20 09:03:15,999 — Script started
+2026-04-20 09:03:16,157 — Fetching data from Homebrew API...
+2026-04-20 09:03:19,396 — Snapshot created with id=19 for 2026-04-20
+2026-04-20 09:03:20,320 — Done. 17562 installation rows saved for snapshot 19.
+2026-04-21 09:25:01,852 — Script started
+2026-04-21 09:25:01,906 — Fetching data from Homebrew API...
+2026-04-22 09:25:01,281 — Script started
+2026-04-22 09:25:01,554 — Fetching data from Homebrew API...
+2026-04-22 09:25:09,592 — Snapshot created with id=20 for 2026-04-22
+2026-04-22 09:25:15,204 — Done. 17629 installation rows saved for snapshot 20.
+2026-04-23 09:07:09,055 — Script started
+2026-04-23 09:07:09,182 — Fetching data from Homebrew API...
+2026-04-23 09:07:10,925 — Snapshot created with id=21 for 2026-04-23
+2026-04-23 09:07:11,108 — Done. 17625 installation rows saved for snapshot 21.
