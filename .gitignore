@@ -175,3 +175,7 @@ dmypy.json
 #   ignore local database files - you can override this if necessary
 *.db
 
+# Ignore generated chart outputs
+*.png
+*.jpg
+*.jpeg
