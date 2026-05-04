@@ -1,56 +1,173 @@
-# wex 2026 homebrew trending
+# Homebrew Analytics to SQLite
 
-## Quick Summary
-This repository is a tool to gather and report on trending homebrew from the api
+A Python tool that fetches daily Homebrew formula install analytics from the Homebrew API and stores them in a local SQLite database. Includes daily delta calculations, chart generation, and automated scheduling via launchd on macOS.
 
-[Homebrew Formulae Install Events 30 days)[https://formulae.brew.sh/analytics/install/30d/]
+---
 
-and storing the results to a local SQLite database.
+## What it does
 
-## Environment Setup
+- Fetches 30-day rolling install counts for all Homebrew formulae from the official Homebrew API
+- Stores the data in a local SQLite database
+- Calculates day-over-day changes (deltas) for each formula
+- Generates bar and line charts from the stored data
+- Can be scheduled to run automatically once per day on macOS
 
-This uses Python, Flask and SQLite with an ML coding tool to perform data capture and storage and a web application to display the trend graph
+---
 
-TBD: Determine more requirements for the web application
+## Requirements
 
-Python should be 3.11 or greater.
+- Python 3.11+
+- macOS (for launchd scheduling)
 
-No virtual environment is enforced in this project. Research, make a working instruction and use an appropriate virtual environment. In the instruction, include why you chose the virtual enviornment tool and a link to the installation page and documentation page. You can check in the working instructions to your branch of this project.
+Install dependencies:
+```bash
+pip3.11 install -r requirements.txt
+```
 
-No restriction is placed on using a coding ML assistant. Claude Sonnet 4.6 and Claude Code have both been tried. Other ML code assistants can be used.
+---
 
-## Application Information
+## Project structure
 
-The project expects to take a snapshot of the data at the above endpoint on a scheduled basis and store it to a local SQLite database. The project may, but does not require a scheduler, only that the use of it should be documented. Scheduling may use cron, systemd or other techniques to provide the scheduling.
+```
+.
+├── brew_analytics_to_sqlite.py   # Fetches data and stores it in SQLite
+├── brew_charts.py                # Generates charts from the database
+├── com.brewanalytics.fetch.plist # launchd schedule config (macOS)
+├── requirements.txt              # Python dependencies
+└── README.md
+```
 
-The data should be written to a table in the database and the event when it was run should be stored somewhere in the database.
+---
 
-Once some data has been collected over a period of time, a separate web application is required to allow a user to interogate the data to provide a daily installation snapshot of which packages are in high use. The application is missing requirements, so some experimentation is expected to clarify the requirements.
+## Database structure
 
-The questions to be answered are
-* What are the 10 most popular packages over a period of time?
-* Which packages are trending up? Criteria is needed to separate daily differences from noise.
-* Which packages are trending down?
-* For any individual package, where does it rank against all other packages and what total daily download for the last day? Do we need to provide an average value over the next time period as well?
+The database contains three tables:
 
-## Known Unknowns
+**`analytics_runs`** — one row per fetch, stores metadata about each run:
+- `id`, `fetched_at`, `category`, `start_date`, `end_date`, `total_items`, `total_count`, `source_url`
 
-The data from the api listed above needs to be analyzed to determine the best way to create the daily information. The initial analysis suggests that creating a difference table between two record rows of the same formula name by date should provide synthetic data that is good enough to provide the trend line for packages.
+**`formula_installs`** — one row per formula per run, stores the raw install data:
+- `id`, `run_id`, `rank`, `formula`, `install_count`, `percent`
 
-Required packages (Python) have not been set. These packages must be included in the requirements.txt file and bound to a major version.
+**`formula_deltas`** — one row per formula per run, stores day-over-day changes:
+- `id`, `run_id`, `formula`, `date`, `install_count`, `prev_install_count`, `delta_count`, `delta_percent`, `is_new`
 
-## git Workflow
+---
 
-A branch per developer will be used off of the main branch.
+## Usage
 
-## ML Coding Assistant
+### Fetch data manually
+```bash
+python3.11 brew_analytics_to_sqlite.py
+```
 
-Current practise has a Markdown file to provide context for the tool to focus the work.
+### Specify a custom database path
+```bash
+python3.11 brew_analytics_to_sqlite.py --db ~/path/to/your.db
+```
 
-Some preliminary standards are, for Claude, to have both an AGENTS.md and a CLAUDE.md file. The AGENTS.md file has general context information while CLAUDE.md has Claude specific context. Other ML coding tools may have different requirements. Refer to the tool documentation to create the correct file and include the file in your repository assets.
+### Use a different time window (30d, 90d, 365d)
+```bash
+python3.11 brew_analytics_to_sqlite.py --url https://formulae.brew.sh/api/analytics/install/90d.json
+```
 
-To address the limitations of context windows, when necessary add a MEMORY.md file that will contain a tool summarized prompt collection that can be used to bring the ML conding tool to a project-aware state with room to add additional prompts. If you use this, remember to check in the file to git.
+### Generate charts
+```bash
+python3.11 brew_charts.py
+```
 
-To provide trace-ability, please create a prompt session file or directory and check it in to git.
- 
-----
+This produces two files:
+- `brew_top10_bar.png` — bar chart of the top 10 formulae by installs (latest run)
+- `brew_trends_line.png` — line chart of install trends over time for tracked formulae
+
+### Track specific formulae in the line chart
+```bash
+python3.11 brew_charts.py --track node git curl wget python@3.13
+```
+
+---
+
+## Automated scheduling (macOS)
+
+The project includes a launchd plist file to run the fetch script automatically at 9am every day.
+
+**1. Check your python3.11 path:**
+```bash
+which python3.11
+```
+
+**2. Update the plist** if the path differs from `/usr/local/bin/python3.11`, and confirm the script and database paths match your machine.
+
+**3. Install and activate the schedule:**
+```bash
+cp com.brewanalytics.fetch.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/com.brewanalytics.fetch.plist
+```
+
+**4. Test it immediately:**
+```bash
+launchctl start com.brewanalytics.fetch
+```
+
+**5. Check the logs:**
+```bash
+cat brew_analytics.log
+cat brew_analytics_error.log
+```
+
+**To remove the schedule:**
+```bash
+launchctl unload ~/Library/LaunchAgents/com.brewanalytics.fetch.plist
+```
+
+---
+
+## Useful queries
+
+**All fetch runs:**
+```sql
+SELECT * FROM analytics_runs;
+```
+
+**Top 10 formulae from the latest run:**
+```sql
+SELECT rank, formula, install_count, percent
+FROM formula_installs
+WHERE run_id = (SELECT MAX(id) FROM analytics_runs)
+ORDER BY rank
+LIMIT 10;
+```
+
+**Top rising formulae today (min 1,000 installs):**
+```sql
+SELECT formula, delta_count, delta_percent
+FROM formula_deltas
+WHERE date = (SELECT MAX(date) FROM formula_deltas)
+  AND is_new = 0
+  AND install_count >= 1000
+ORDER BY delta_percent DESC
+LIMIT 10;
+```
+
+**Track a formula over time:**
+```sql
+SELECT date, install_count, delta_count, delta_percent
+FROM formula_deltas
+WHERE formula = 'node'
+ORDER BY date;
+```
+
+**Search for a specific formula:**
+```sql
+SELECT * FROM formula_installs
+WHERE formula = 'node';
+```
+
+---
+
+## Notes
+
+- The Homebrew API updates once per day, so running the script multiple times on the same day will not produce new delta data
+- Delta calculations require at least two runs on different days to produce results
+- Charts are overwritten on each run — they always reflect the latest data
+- The `formula_deltas` table excludes formulae with no prior data from percentage calculations and marks them with `is_new = 1`
