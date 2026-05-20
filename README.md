@@ -54,3 +54,17 @@ To address the limitations of context windows, when necessary add a MEMORY.md fi
 To provide trace-ability, please create a prompt session file or directory and check it in to git.
  
 ----
+
+# Final Update to Project
+I finally disabled my scheduler, because the database was growing too large too fast.
+After 42 days worth of data had been collected, It is now time to put the database to rest before it grows uncontrollably. For future impllemetations, I would have to consider making it live on the cloud so I don't need to worry about local access and storage.
+It might be expensive but that would be the next phase of the project
+
+The location of hte database: C:\Users\BC-Tech\Documents\GitHub\wex-2026-brew-trend\brew_data.db
+
+Before i delete this copy, my plan is to upload / backup this database somewhere else for referencing in the future.
+
+Instead of delete it, i simply disabled the scheduler so that It is easy to reactivate, might I change my mind.
+
+My advice would be to upload it to my Google Drive, if possible.
+another thing to know is that when seting up tyeh schduler, the script it runs is the python interpreter script within this project folder. 
