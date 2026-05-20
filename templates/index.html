@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Brew Analytics</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0b0e14;
+      --surface:  #131720;
+      --border:   #1e2535;
+      --accent:   #f97316;
+      --accent2:  #3b82f6;
+      --text:     #e2e8f0;
+      --muted:    #64748b;
+      --up:       #22c55e;
+      --down:     #ef4444;
+      --mono:     'Space Mono', monospace;
+      --sans:     'DM Sans', sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 1.25rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      background: var(--bg);
+      z-index: 10;
+    }
+    .logo {
+      font-family: var(--mono);
+      font-size: 1rem;
+      color: var(--accent);
+      letter-spacing: 0.05em;
+    }
+    .logo span { color: var(--muted); }
+    .run-info {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      color: var(--muted);
+    }
+
+    /* ── Layout ── */
+    main {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+      display: grid;
+      gap: 1.5rem;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.5rem;
+    }
+    .card-title {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* ── Controls ── */
+    .controls {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .controls label {
+      font-size: 0.75rem;
+      color: var(--muted);
+      font-family: var(--mono);
+    }
+    select, input[type="number"], input[type="text"] {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      padding: 0.4rem 0.75rem;
+      border-radius: 4px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    select:focus, input:focus { border-color: var(--accent); }
+    input[type="number"] { width: 80px; }
+    input[type="text"]   { width: 220px; }
+
+    button {
+      background: var(--accent);
+      color: #000;
+      border: none;
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.4rem 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    button:hover { opacity: 0.85; }
+    button.secondary {
+      background: transparent;
+      color: var(--accent2);
+      border: 1px solid var(--accent2);
+    }
+
+    /* ── Two col grid ── */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    @media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
+
+    /* ── Chart wrappers ── */
+    .chart-wrap { position: relative; height: 320px; }
+
+    /* ── Trending table ── */
+    .trend-table { width: 100%; border-collapse: collapse; }
+    .trend-table th {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      text-align: left;
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .trend-table td {
+      font-size: 0.85rem;
+      padding: 0.6rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .trend-table tr:last-child td { border-bottom: none; }
+    .trend-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .formula-name {
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      color: var(--text);
+      cursor: pointer;
+      text-decoration: underline;
+      text-decoration-color: var(--border);
+    }
+    .formula-name:hover { color: var(--accent); }
+    .pill {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 3px;
+      font-weight: 700;
+    }
+    .pill.up   { background: rgba(34,197,94,0.12);  color: var(--up);   }
+    .pill.down { background: rgba(239,68,68,0.12);   color: var(--down); }
+    .pill.flat { background: rgba(100,116,139,0.12); color: var(--muted);}
+
+    /* ── Formula trend section ── */
+    #trend-section { display: none; }
+    #trend-section.visible { display: block; }
+    .trend-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+    }
+    .trend-formula-name {
+      font-family: var(--mono);
+      font-size: 1rem;
+      color: var(--accent);
+    }
+    .close-btn {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      padding: 0.25rem 0.6rem;
+      font-size: 0.7rem;
+    }
+
+    /* ── Empty state ── */
+    .empty {
+      text-align: center;
+      padding: 3rem;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 0.8rem;
+    }
+
+    /* ── Stat pills in header ── */
+    .stats { display: flex; gap: 2rem; }
+    .stat-item { text-align: right; }
+    .stat-value {
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      color: var(--text);
+    }
+    .stat-label {
+      font-family: var(--mono);
+      font-size: 0.6rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🍺 brew<span>/</span>analytics</div>
+  <div class="stats" id="header-stats"></div>
+</header>
+
+<main>
+
+  <!-- Controls row -->
+  <div class="card">
+    <div class="card-title">Filters</div>
+    <div class="controls">
+      <label>Top N</label>
+      <input type="number" id="top-n" value="10" min="5" max="50"/>
+
+      <label>Min installs</label>
+      <input type="number" id="min-installs" value="1000" min="0" step="500"/>
+
+      <label>Search formula</label>
+      <input type="text" id="search-input" placeholder="e.g. node" autocomplete="off"/>
+
+      <button onclick="loadAll()">Apply</button>
+      <button class="secondary" onclick="clearSearch()">Clear search</button>
+    </div>
+    <div id="search-results" style="margin-top:0.75rem; display:flex; gap:0.5rem; flex-wrap:wrap;"></div>
+  </div>
+
+  <!-- Top 10 bar + Trending table -->
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">Top Formulae — latest run</div>
+      <div class="chart-wrap">
+        <canvas id="bar-chart"></canvas>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <span>Trending — day over day</span>
+        <span id="trend-date" style="color:var(--accent); font-size:0.7rem;"></span>
+      </div>
+      <div id="trending-container"></div>
+    </div>
+  </div>
+
+  <!-- Formula trend line chart (shown on click) -->
+  <div class="card" id="trend-section">
+    <div class="trend-header">
+      <div class="trend-formula-name" id="trend-title"></div>
+      <button class="close-btn" onclick="closeTrend()">✕ close</button>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="line-chart"></canvas>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  let barChart  = null;
+  let lineChart = null;
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+
+  function fmt(n) { return Number(n).toLocaleString(); }
+
+  function pillClass(pct) {
+    if (pct > 0)  return 'up';
+    if (pct < 0)  return 'down';
+    return 'flat';
+  }
+
+  function sign(n) { return n >= 0 ? '+' : ''; }
+
+  // ── Boot ───────────────────────────────────────────────────────────────────
+
+  async function loadAll() {
+    await Promise.all([loadHeaderStats(), loadBar(), loadTrending()]);
+  }
+
+  async function loadHeaderStats() {
+    const runs = await fetch('/api/runs').then(r => r.json());
+    if (!runs.length) return;
+    const latest = runs[0];
+    document.getElementById('header-stats').innerHTML = `
+      <div class="stat-item">
+        <div class="stat-value">${fmt(latest.total_count)}</div>
+        <div class="stat-label">Total installs</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value">${fmt(latest.total_items)}</div>
+        <div class="stat-label">Formulae</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value">${latest.end_date}</div>
+        <div class="stat-label">Period end</div>
+      </div>
+    `;
+  }
+
+  // ── Bar chart ──────────────────────────────────────────────────────────────
+
+  async function loadBar() {
+    const n    = document.getElementById('top-n').value;
+    const data = await fetch(`/api/top?n=${n}`).then(r => r.json());
+    if (!data.length) return;
+
+    const labels = data.map(d => d.formula).reverse();
+    const counts = data.map(d => d.install_count).reverse();
+
+    if (barChart) barChart.destroy();
+    const ctx = document.getElementById('bar-chart').getContext('2d');
+    barChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          data: counts,
+          backgroundColor: 'rgba(249,115,22,0.7)',
+          borderColor:     'rgba(249,115,22,1)',
+          borderWidth: 1,
+          borderRadius: 3,
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: {
+            grid:  { color: 'rgba(255,255,255,0.04)' },
+            ticks: { color: '#64748b', font: { family: 'Space Mono', size: 10 },
+                     callback: v => fmt(v) }
+          },
+          y: {
+            grid:  { display: false },
+            ticks: { color: '#e2e8f0', font: { family: 'Space Mono', size: 10 } }
+          }
+        }
+      }
+    });
+  }
+
+  // ── Trending table ─────────────────────────────────────────────────────────
+
+  async function loadTrending() {
+    const n    = document.getElementById('top-n').value;
+    const min  = document.getElementById('min-installs').value;
+    const data = await fetch(`/api/trending?n=${n}&min_installs=${min}`).then(r => r.json());
+
+    const dateEl = document.getElementById('trend-date');
+
+    if (!data.length) {
+      document.getElementById('trending-container').innerHTML =
+        '<div class="empty">No delta data yet — run the fetch script on two different days.</div>';
+      return;
+    }
+
+    const rows = data.map(d => `
+      <tr>
+        <td><span class="formula-name" onclick="loadFormulaTrend('${d.formula}')">${d.formula}</span></td>
+        <td style="font-family:var(--mono); font-size:0.8rem; color:var(--muted)">${fmt(d.install_count)}</td>
+        <td><span class="pill ${pillClass(d.delta_percent)}">
+          ${sign(d.delta_percent)}${Number(d.delta_percent).toFixed(2)}%
+        </span></td>
+        <td style="font-family:var(--mono); font-size:0.75rem; color:var(--muted)">
+          ${sign(d.delta_count)}${fmt(d.delta_count)}
+        </td>
+      </tr>
+    `).join('');
+
+    document.getElementById('trending-container').innerHTML = `
+      <table class="trend-table">
+        <thead>
+          <tr>
+            <th>Formula</th>
+            <th>Installs (30d)</th>
+            <th>Δ %</th>
+            <th>Δ Count</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+  }
+
+  // ── Formula trend line chart ───────────────────────────────────────────────
+
+  async function loadFormulaTrend(formula) {
+    const data = await fetch(`/api/trend/${encodeURIComponent(formula)}`).then(r => r.json());
+
+    document.getElementById('trend-title').textContent = formula;
+    document.getElementById('trend-section').classList.add('visible');
+    document.getElementById('trend-section').scrollIntoView({ behavior: 'smooth' });
+
+    if (!data.length) {
+      document.getElementById('line-chart').parentElement.innerHTML =
+        '<div class="empty">No historical data for this formula yet.</div>';
+      return;
+    }
+
+    const labels  = data.map(d => d.date);
+    const counts  = data.map(d => d.install_count);
+    const deltas  = data.map(d => d.delta_percent);
+
+    if (lineChart) lineChart.destroy();
+    const ctx = document.getElementById('line-chart').getContext('2d');
+    lineChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Install count (30d)',
+            data: counts,
+            borderColor: 'rgba(249,115,22,0.9)',
+            backgroundColor: 'rgba(249,115,22,0.07)',
+            tension: 0.3,
+            fill: true,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            yAxisID: 'y1',
+          },
+          {
+            label: 'Δ % day-over-day',
+            data: deltas,
+            borderColor: 'rgba(59,130,246,0.9)',
+            backgroundColor: 'transparent',
+            tension: 0.3,
+            fill: false,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            borderDash: [4, 4],
+            yAxisID: 'y2',
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: {
+            labels: { color: '#64748b', font: { family: 'Space Mono', size: 10 } }
+          }
+        },
+        scales: {
+          x: {
+            grid:  { color: 'rgba(255,255,255,0.04)' },
+            ticks: { color: '#64748b', font: { family: 'Space Mono', size: 10 },
+                     maxRotation: 30 }
+          },
+          y1: {
+            position: 'left',
+            grid:  { color: 'rgba(255,255,255,0.04)' },
+            ticks: { color: '#f97316', font: { family: 'Space Mono', size: 10 },
+                     callback: v => fmt(v) }
+          },
+          y2: {
+            position: 'right',
+            grid: { display: false },
+            ticks: { color: '#3b82f6', font: { family: 'Space Mono', size: 10 },
+                     callback: v => v + '%' }
+          }
+        }
+      }
+    });
+  }
+
+  function closeTrend() {
+    document.getElementById('trend-section').classList.remove('visible');
+    if (lineChart) { lineChart.destroy(); lineChart = null; }
+  }
+
+  // ── Search ─────────────────────────────────────────────────────────────────
+
+  let searchTimeout;
+  document.getElementById('search-input').addEventListener('input', function() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => runSearch(this.value), 300);
+  });
+
+  async function runSearch(q) {
+    if (!q) { document.getElementById('search-results').innerHTML = ''; return; }
+    const results = await fetch(`/api/search?q=${encodeURIComponent(q)}`).then(r => r.json());
+    document.getElementById('search-results').innerHTML = results.map(f => `
+      <span style="
+        font-family:var(--mono); font-size:0.75rem;
+        background:var(--border); padding:0.25rem 0.6rem;
+        border-radius:3px; cursor:pointer; color:var(--accent2);"
+        onclick="loadFormulaTrend('${f}')">${f}</span>
+    `).join('');
+  }
+
+  function clearSearch() {
+    document.getElementById('search-input').value = '';
+    document.getElementById('search-results').innerHTML = '';
+  }
+
+  // ── Init ───────────────────────────────────────────────────────────────────
+  loadAll();
+</script>
+
+</body>
+</html>
