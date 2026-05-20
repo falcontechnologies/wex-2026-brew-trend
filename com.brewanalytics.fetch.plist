@@ -4,18 +4,19 @@
 <plist version="1.0">
 <dict>
 
-    <!-- Unique label — must match the filename -->
     <key>Label</key>
     <string>com.brewanalytics.fetch</string>
 
-    <!-- Command to run: python3.11 + full path to your script -->
-    <!-- ⚠️  UPDATE THESE TWO PATHS to match your machine -->
+    <!-- Runs a small shell script so we can chain fetch → archive in one job -->
+    <!-- ⚠️  UPDATE ALL PATHS below to match your machine -->
     <key>ProgramArguments</key>
     <array>
-        <string>/Library/Frameworks/Python.framework/Versions/3.11/bin/python3.11</string>
-        <string>/Users/sarahye/Downloads/vscodeprojects/wex26/brew_analytics_to_sqlite.py</string>
-        <string>--db</string>
-        <string>/Users/sarahye/Downloads/vscodeprojects/wex26/brew_analytics.db</string>
+        <string>/bin/sh</string>
+        <string>-c</string>
+        <string>
+            /usr/local/bin/python3.11 /Users/sarahye/Downloads/vscodeprojects/wex26/brew_analytics_to_sqlite.py --db /Users/sarahye/Downloads/vscodeprojects/wex26/brew_analytics.db &amp;&amp;
+            /usr/local/bin/python3.11 /Users/sarahye/Downloads/vscodeprojects/wex26/brew_archive.py --db /Users/sarahye/Downloads/vscodeprojects/wex26/brew_analytics.db --archive /Users/sarahye/Downloads/vscodeprojects/wex26/brew_analytics_archive.db
+        </string>
     </array>
 
     <!-- Run every day at 9:00 AM -->
@@ -27,13 +28,11 @@
         <integer>0</integer>
     </dict>
 
-    <!-- Log stdout and stderr so you can debug if something goes wrong -->
     <key>StandardOutPath</key>
     <string>/Users/sarahye/Downloads/vscodeprojects/wex26/brew_analytics.log</string>
     <key>StandardErrorPath</key>
     <string>/Users/sarahye/Downloads/vscodeprojects/wex26/brew_analytics_error.log</string>
 
-    <!-- Run even if the scheduled time was missed (e.g. laptop was asleep) -->
     <key>RunAtLoad</key>
     <false/>
 
