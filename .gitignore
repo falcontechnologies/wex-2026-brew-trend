@@ -172,10 +172,13 @@ dmypy.json
 # PyPI configuration file
 .pypirc
 
-#   ignore local database files - you can override this if necessary
+# Ignore local database files - you can override this if necessary
 *.db
 
 # Ignore generated chart outputs
 *.png
 *.jpg
 *.jpeg
+
+# Ignore macOS hidden files
+.DS_Store
