@@ -83,7 +83,7 @@ python3.11 app.py
 Then open `http://localhost:5000` in your browser.
 
 **Mac gotchas:**
-- Use `http://127.0.0.1` instead of `http://localhost` — macOS can block localhost access
+- Use `http://127.0.0.1` or `HTTP://localhost:8080` instead of `http://localhost` — macOS can block localhost access
 - Port 5000 is reserved by macOS Control Center, so always run on a different port:
   ```bash
   python3.11 app.py --port 8080

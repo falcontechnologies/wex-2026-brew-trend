@@ -4,7 +4,7 @@ Flask web dashboard for Homebrew Analytics.
 
 Usage:
     pip3.11 install flask
-    python3.11 app.py
+    python3.11 app.py --port 8080
     Then open http://localhost:5000 in your browser.
 """
 
